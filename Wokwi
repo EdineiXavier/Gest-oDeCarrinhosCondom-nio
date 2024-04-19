@@ -1,0 +1,235 @@
+// ESCLARECIMENTOS:
+// É PRECISO SEGURAR O BOTÃO E NÃO APENAS PRESSIONA-LO
+// BOTÃO AZUL: PEGAR CARRINHO
+// BOTÃO AMARELO: DEVOLVER CARRINHO
+// LED VERDE: AINDA HÁ CARRINHO DISPONIVEL
+// LED VERMELHO: NAO HÁ MAIS CARRINHO DISPONÍVEL
+// HC-SR04 (sensor de distancia) é usado para localizar um carrinho perdido, abandonado
+
+
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <LiquidCrystal_I2C.h>
+#include <ESP32Servo.h> 
+
+#define I2C_ADDR    0x27
+#define LCD_COLUMNS 20
+#define LCD_LINES   4
+
+LiquidCrystal_I2C lcd(I2C_ADDR, LCD_COLUMNS, LCD_LINES);
+Servo meuServo; 
+
+const char* mqtt_server = "broker.hivemq.com";
+const char* mqttTopic = "carrinho/andar";
+unsigned long lastMsg = 0;
+#define MSG_BUFFER_SIZE  (50)
+char msg[MSG_BUFFER_SIZE];
+
+
+const int ledA = 26, ledV = 14, btnE = 18, btnS = 2;
+const int buzzerPin = 12; 
+const int trigPin = 5; 
+const int echoPin = 4; 
+const int servoPin = 25; 
+
+bool eBtn1 = LOW, previousState1 = LOW;
+bool eBtn2 = HIGH, previousState2 = HIGH;
+
+int count = 9, previousCount = 0; // Começa com 9 carrinhos disponíveis
+int andar = 0;
+bool btnPressed = false; // Variável para controlar se um botão foi pressionado
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Carrinhos Ed");
+
+  lcd.init();
+  lcd.backlight();
+
+  pinMode(ledA, OUTPUT);
+  pinMode(ledV, OUTPUT);
+  pinMode(btnE, INPUT_PULLUP);
+  pinMode(btnS, INPUT_PULLUP);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  meuServo.attach(servoPin);
+
+  pinMode(buzzerPin, OUTPUT); // Configura o pino do buzzer como saída
+
+  Serial.print("Conectando-se ao Wi-Fi");
+  WiFi.begin("Wokwi-GUEST", "", 6);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(100);
+    Serial.print(".");
+  }
+  Serial.println(" Conectado!");
+}
+
+void loop() {
+  eBtn1 = digitalRead(btnE);
+  eBtn2 = digitalRead(btnS);
+  
+  digitalWrite(ledA, LOW); 
+  digitalWrite(ledV, LOW); 
+
+  delay(100);
+
+  if(eBtn1 == HIGH && previousState1 == LOW){
+    if (count > 0) { 
+      count--; 
+      btnPressed = true; 
+    }
+    previousState1 = HIGH;
+  }
+
+  if(eBtn1 == LOW && previousState1 == HIGH){
+    previousState1 = LOW;
+  }
+
+  if(count != previousCount){
+    Serial.println(count);
+    previousCount = count;
+  }  
+
+  delay(100);
+
+  if(eBtn2 == HIGH && previousState2 == LOW){
+    count++; 
+    btnPressed = true; 
+    previousState2 = HIGH;
+  }
+
+  if(eBtn2 == LOW && previousState2 == HIGH){
+    previousState2 = LOW;
+  }
+
+  if(count != previousCount){
+    Serial.println(count);
+    previousCount = count;
+  }  
+
+  float distancia = medirDistancia();
+  if (distancia > 0) {
+    andar = calcularAndar(distancia);
+    enviarAndarMQTT(andar);
+  } else {
+    andar = 0; 
+  }
+
+  if (btnPressed) {
+    moverServo();
+    btnPressed = false; // Reinicia a variável de controle
+  }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);  
+  lcd.print(count);
+  lcd.print(" Carros Disponiveis");
+  lcd.setCursor(0, 2);
+  lcd.print("Carrinho Abandonado: ");
+  lcd.setCursor(0, 3);
+  lcd.print("Andar: ");
+  if (andar == 0) {
+    lcd.print("Invalido");
+  } else {
+    lcd.print(andar);
+  }
+
+  if(count == 0){
+    lcd.setCursor(0,1);
+    lcd.print("Nao tem carrinho!");
+
+    digitalWrite(ledV, HIGH); 
+
+    // Ativa o buzzer
+    digitalWrite(buzzerPin, HIGH);
+  } else {
+    digitalWrite(ledA, HIGH); 
+
+    // Desativa o buzzer
+    digitalWrite(buzzerPin, LOW);
+  }
+  enviarCarrinhosDisponiveisMQTT(count);
+  reconectarBroker();
+}
+
+void conectarBroker() {         
+  client.setServer(mqtt_server, 1883);
+  if (!client.connected()) {
+    Serial.print("Conectando ao servidor MQTT...");
+    String clientId = "";
+    clientId += String(random(0xffff), HEX);
+    if (client.connect(clientId.c_str())) {
+      // digitalWrite(ledA,HIGH);
+      Serial.println("Conectado");              
+      client.subscribe("Sensor de Distancia");
+    }
+  }
+}
+
+void reconectarBroker() {
+  if (!client.connected()) {
+    conectarBroker();
+  }
+  client.loop();
+}
+
+float medirDistancia() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  unsigned long duration = pulseIn(echoPin, HIGH);
+  // Calcula a distância em centímetros
+  float distancia = duration * 0.034 / 2;
+  return distancia;
+}
+
+int calcularAndar(float distancia) {
+  if (distancia > 0 && distancia <= 20) {
+    return 1;
+  } else if (distancia > 20 && distancia <= 40) {
+    return 2;
+  } else if (distancia > 40 && distancia <= 60) {
+    return 3;
+  } else if (distancia > 60 && distancia <= 80) {
+    return 4;
+  } else if (distancia > 80 && distancia <= 100) {
+    return 5;
+  } else if (distancia > 100 && distancia <= 120){
+    return 6;
+  } else if (distancia > 120 && distancia <= 140){
+    return 7;
+  } else if (distancia > 140 && distancia <= 160){
+    return 8;
+  } else if (distancia > 160 && distancia <= 180){
+    return 9;
+  } else if (distancia > 180 && distancia <= 200){
+    return 10;
+  } else {
+    return 0;
+  }
+}
+
+void moverServo() {
+  // Move o servo para 90 graus
+  meuServo.write(90);
+  delay(400);
+  meuServo.write(0); // Retorna o servo à posição inicial
+}
+
+void enviarAndarMQTT(int andar) {
+  String payload = String(andar); // Converter o andar para uma string
+  client.publish(mqttTopic, payload.c_str()); // Publicar o andar no tópico MQTT
+}
+
+void enviarCarrinhosDisponiveisMQTT(int count) {
+  String payload = String(count); // Converter o número de carrinhos para uma string
+  client.publish("carrinho/count", payload.c_str()); // Publicar o número de carrinhos no tópico MQTT
+}
