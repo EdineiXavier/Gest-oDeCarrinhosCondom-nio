@@ -1,0 +1,158 @@
+[
+    {
+        "id": "54340a472da2b83f",
+        "type": "tab",
+        "label": "Fluxo 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "89f2c06ba0eeb468",
+        "type": "mqtt in",
+        "z": "54340a472da2b83f",
+        "name": "",
+        "topic": "carrinho/andar",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "7b126807a897a981",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 230,
+        "y": 140,
+        "wires": [
+            [
+                "e8c9c0728db5cc7d"
+            ]
+        ]
+    },
+    {
+        "id": "e8c9c0728db5cc7d",
+        "type": "ui_gauge",
+        "z": "54340a472da2b83f",
+        "name": "",
+        "group": "890576c2f6364f0b",
+        "order": 0,
+        "width": "0",
+        "height": "0",
+        "gtype": "gage",
+        "title": "Um carrinho localizado está no:",
+        "label": "andar",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 10,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 550,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "b995b165203d79e3",
+        "type": "mqtt in",
+        "z": "54340a472da2b83f",
+        "name": "",
+        "topic": "carrinho/count",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "7b126807a897a981",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 230,
+        "y": 260,
+        "wires": [
+            [
+                "aff4fb8797d2685e"
+            ]
+        ]
+    },
+    {
+        "id": "aff4fb8797d2685e",
+        "type": "ui_gauge",
+        "z": "54340a472da2b83f",
+        "name": "",
+        "group": "890576c2f6364f0b",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "Carrinhos Disponíveis: ",
+        "label": "carrinhos",
+        "format": "{{value}}",
+        "min": 0,
+        "max": 10,
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 540,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "7b126807a897a981",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "broker.hivemq.com",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "890576c2f6364f0b",
+        "type": "ui_group",
+        "name": "Carrinhos de Apoio para Prédio",
+        "tab": "e96ed2b982d887e0",
+        "order": 1,
+        "disp": true,
+        "width": "6",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "e96ed2b982d887e0",
+        "type": "ui_tab",
+        "name": "Carrinhos Ed",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
